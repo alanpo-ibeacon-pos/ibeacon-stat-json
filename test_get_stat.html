@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+<head lang="en">
+    <meta charset="UTF-8">
+    <title></title>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.3/jquery.min.js"></script>
+    <script type="application/javascript" language="javascript">
+        var dym_load = function() {
+            $.ajax({ // create an AJAX call...
+                data: $('#test_get_stat').serialize(), // get the form data
+                type: $('#test_get_stat').attr('method'), // GET or POST
+                url: $('#test_get_stat').attr('action'), // the file to call
+                success: function(response) { // on success..
+                    $('#result').html(response); // update the DIV
+                },
+                error: function(xhr, textStatus, ex) {
+
+                },
+                complete: function(xhr, textStatus) {
+                    $('#status_code').html(xhr.status + ": " + textStatus);
+                    console.log(xhr.response);
+                }
+            });
+        }
+    </script>
+</head>
+<body>
+<form id="test_get_stat" action="get_stat.php" method="post">
+    selfMac <input type="text" value="00:1A:7D:DA:71:0B" name="selfMac" /><br />
+    from <input type="text" value="2015-01-30 02:56:27" name="from" /><br />
+    to <input type="text" value="2015-01-30 02:56:47" name="to" /><br />
+    <button type="submit">old do</button>
+    <button type="button" onclick="dym_load()">dym do</button>
+</form>
+<div style="width: 800px;">
+    Status Code: <div id="status_code" style="height: 16px;"></div>
+    <pre id="result" style="width: 800px; height: 600px; border: 1px #999 dashed;"></pre>
+</div>
+</body>
+</html>
