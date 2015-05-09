@@ -1,72 +1,88 @@
 <?php
 
-// $selfMac = isset($_POST["selfMac"]) ? $_POST["selfMac"] : null;
-$strFrom = isset($_POST["from"]) ? $_POST["from"] : null;
-$strTo = isset($_POST["to"]) ? $_POST["to"] : null;
+try {
 
-// if (is_null($selfMac)) {
-//     http_response_code(500);
-//     header('Content-Type: text/plain');
-//     echo 'selfMac attr not provided';
-//     die(1);
-// }
+    // $selfMac = isset($_POST["selfMac"]) ? $_POST["selfMac"] : null;
+    $strFrom = isset($_POST["from"]) ? $_POST["from"] : null;
+    $strTo = isset($_POST["to"]) ? $_POST["to"] : null;
 
-date_default_timezone_set('UTC');
+    // if (is_null($selfMac)) {
+    //     http_response_code(500);
+    //     header('Content-Type: text/plain');
+    //     echo 'selfMac attr not provided';
+    //     die(1);
+    // }
 
-$to = !is_null($strTo) && strlen($strTo) > 0 ? DateTime::createFromFormat('Y-m-d H:i:s', $strTo) : new DateTime();
-$from = !is_null($strFrom) && strlen($strTo) > 0 ? DateTime::createFromFormat('Y-m-d H:i:s', $strFrom) : (new DateTime())->sub(new DateInterval('PT10S'));
+    date_default_timezone_set('UTC');
 
-$db = new mysqli('moodle-db.cndunymmm6cz.ap-southeast-1.rds.amazonaws.com:3306', '2014fyp_ips', 'alanpo2593', '2014fyp_ips');
-//$db = new mysqli('127.0.0.1:3306', 'ibeacon', '1Beac0n', 'ibeacon_traces');
-//$db = new PDO('mysql:host=127.0.0.1;port=3306;dbname=ibeacon_traces', 'ibeacon', '1Beac0n');
-//$db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-//$db->setAttribute(PDO::ATTR_EMULATE_PREPARES, false);
+    $to = !is_null($strTo) && strlen($strTo) > 0 ? DateTime::createFromFormat('Y-m-d H:i:s', $strTo) : new DateTime();
+    $from = !is_null($strFrom) && strlen($strTo) > 0 ? DateTime::createFromFormat('Y-m-d H:i:s', $strFrom) : (new DateTime())->sub(new DateInterval('PT10S'));
 
-$q_mac_r = $db->query('SELECT uuid, major, minor
-                      FROM traces
-                      WHERE '.'
-                    datetime BETWEEN \'' . $from->format('Y-m-d H:i:s') . '\' AND \'' . $to->format('Y-m-d H:i:s') . '\'
-                      GROUP BY uuid, major, minor');
-// $q_mac_r->execute(array(':selfMac' => hexdec($selfMac))); # performace: slow
+    $dir = dirname($_SERVER['DOCUMENT_ROOT']) . '/sqlite_db';
+    if (!file_exists($dir)) {
+        mkdir($dir, 0644, true);
+    }
+    $db = new SQLite3($dir . '/ibeacons.sqlite3');
+    unset($dir);
 
-$arr_stat = array();
+    $s_q_mac_r = $db->prepare("SELECT uuid, major, minor FROM traces WHERE datetime BETWEEN :dateStart AND :dateEnd GROUP BY uuid, major, minor");
+    $s_q_mac_r->bindValue(':dateStart', $from->format('Y-m-d H:i:s'), SQLITE3_TEXT);
+    $s_q_mac_r->bindValue(':dateEnd', $to->format('Y-m-d H:i:s'), SQLITE3_TEXT);
+    $q_mac_r = $s_q_mac_r->execute();
+//     $q_mac_r = $db->query('SELECT uuid, major, minor
+//                      FROM traces
+//                      WHERE '.'
+//                    datetime BETWEEN \'' . $from->format('Y-m-d H:i:s') . '\' AND \'' . $to->format('Y-m-d H:i:s') . '\'
+//                      GROUP BY uuid, major, minor');
+    // $q_mac_r->execute(array(':selfMac' => hexdec($selfMac))); # performace: slow
 
-while ($row_mac_r = $q_mac_r->fetch_assoc()) {
-    $uuid = $row_mac_r['uuid'];
-    $major = intval($row_mac_r['major']);
-    $minor = intval($row_mac_r['minor']);
+    $arr_stat = array();
 
-    $q_ib = $db->query('SELECT AVG(txpower) AS txpower, AVG(rssi) AS rssi, MIN(datetime) AS firstSeen, MAX(datetime) AS lastSeen FROM (
-                            SELECT _idx, txpower, rssi, datetime
-                            FROM (
-                                SELECT @rownum := @rownum + 1 AS _idx, txpower, rssi, datetime
-                                FROM traces, (SELECT @rownum := 0) r
-                                WHERE uuid = 0x' . bin2hex($uuid) . ' && major = ' . $major . ' && minor = ' . $minor . ' AND datetime BETWEEN \'' . $from->format('Y-m-d H:i:s') . '\' AND \'' . $to->format('Y-m-d H:i:s') . '\'
-                            ) limited_traces
-                            WHERE _idx >= ROUND(FOUND_ROWS() * 0.1)
-                            && _idx < ROUND(FOUND_ROWS() * 0.9)
-                        ) AS stat_traces');
+    $s_q_ib = $db->prepare('SELECT AVG(txpower) AS txpower, AVG(rssi) AS rssi, MIN(datetime) AS firstSeen, MAX(datetime) AS lastSeen FROM (
+                                SELECT _idx, txpower, rssi, datetime
+                                FROM (
+                                    SELECT @rownum := @rownum + 1 AS _idx, txpower, rssi, datetime
+                                    FROM traces, (SELECT @rownum := 0) r
+                                    WHERE uuid = :uuid && major = :major && minor = :minor AND datetime BETWEEN :dateStart AND :dateEnd
+                                ) limited_traces
+                                WHERE _idx >= ROUND(FOUND_ROWS() * 0.1)
+                                && _idx < ROUND(FOUND_ROWS() * 0.9)
+                            ) AS stat_traces');
+    while ($row_mac_r = $q_mac_r->fetchArray(SQLITE3_ASSOC)) {
+        $s_q_ib->bindValue(':uuid', $row_mac_r['uuid'], SQLITE3_BLOB);
+        $s_q_ib->bindValue(':major', $row_mac_r['major'], SQLITE3_INTEGER);
+        $s_q_ib->bindValue(':minor', $row_mac_r['minor'], SQLITE3_INTEGER);
+        $s_q_mac_r->bindValue(':dateStart', $from->format('Y-m-d H:i:s'), SQLITE3_TEXT);
+        $s_q_mac_r->bindValue(':dateEnd', $to->format('Y-m-d H:i:s'), SQLITE3_TEXT);
 
-    if ($q_ib->num_rows != 1) {
-        http_response_code(500);
-        header('Content-Type: text/plain');
-        echo 'empty result when getting avg txpower and rssi for uuid: ' . bin2hex($uuid) . ', major: ' . $major . ', minor: ' . $minor;
-        die(1);
+        $q_ib = $s_q_ib->execute();
+
+        if (!$q_ib->numColumns() || $q_ib->columnType(0) == SQLITE3_NULL) {
+            http_response_code(500);
+            header('Content-Type: text/plain');
+            echo 'empty result when getting avg txpower and rssi for uuid: ' . bin2hex($row_mac_r['uuid']) . ', major: ' . $row_mac_r['major'] . ', minor: ' . $row_mac_r['minor'];
+            die(1);
+        }
+
+        $row_ib = $q_ib->fetchArray(SQLITE3_ASSOC);
+
+        // actually a overhead-excluded version of arr_push
+        $arr_stat[] = [
+            'uuid' => bin2hex($row_mac_r['uuid']),
+            'major' => $row_mac_r['major'],
+            'minor' => $row_mac_r['minor'],
+            'rssi' => floatval($row_ib['rssi']),
+            'txpower' => floatval($row_ib['txpower']),
+            'firstSeen' => $row_ib['firstSeen'],
+            'lastSeen' => $row_ib['lastSeen']
+        ];
     }
 
-    $row_ib = $q_ib->fetch_assoc();
+    header('Content-Type: application/json');
+    echo json_encode($arr_stat, JSON_PRETTY_PRINT);
 
-    // actually a overhead-excluded version of arr_push
-    $arr_stat[] = [
-        'uuid' => bin2hex($uuid),
-        'major' => $major,
-        'minor' => $minor,
-        'rssi' => floatval($row_ib['rssi']),
-        'txpower' => floatval($row_ib['txpower']),
-        'firstSeen' => $row_ib['firstSeen'],
-        'lastSeen' => $row_ib['lastSeen']
-    ];
+} catch (Exception $e) {
+    http_response_code(500);
+    echo $e;
+    die(1);
 }
-
-header('Content-Type: application/json');
-echo json_encode($arr_stat, JSON_PRETTY_PRINT);
