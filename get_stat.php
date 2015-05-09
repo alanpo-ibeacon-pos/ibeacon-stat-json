@@ -63,8 +63,8 @@ while ($row_mac_r = $q_mac_r->fetch_assoc()) {
         'minor' => $minor,
         'rssi' => floatval($row_ib['rssi']),
         'txpower' => floatval($row_ib['txpower']),
-        'firstSeen' => floatval($row_ib['firstSeen']),
-        'lastSeen' => floatval($row_ib['lastSeen'])
+        'firstSeen' => $row_ib['firstSeen'],
+        'lastSeen' => $row_ib['lastSeen']
     ];
 }
 
