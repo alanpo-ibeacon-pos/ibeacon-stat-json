@@ -1,6 +1,6 @@
 <?php
 
-// $selfMac = isset($_POST["selfMac"]) ? $_POST["selfMac"] : null;
+$selfMac = isset($_POST["selfMac"]) ? $_POST["selfMac"] : null;
 $strFrom = isset($_POST["from"]) ? $_POST["from"] : null;
 $strTo = isset($_POST["to"]) ? $_POST["to"] : null;
 
@@ -17,17 +17,14 @@ $to = !is_null($strTo) && strlen($strTo) > 0 ? DateTime::createFromFormat('Y-m-d
 $from = !is_null($strFrom) && strlen($strTo) > 0 ? DateTime::createFromFormat('Y-m-d H:i:s', $strFrom) : (new DateTime())->sub(new DateInterval('PT10S'));
 
 $db = new mysqli('moodle-db.cndunymmm6cz.ap-southeast-1.rds.amazonaws.com:3306', '2014fyp_ips', 'alanpo2593', '2014fyp_ips');
-//$db = new mysqli('127.0.0.1:3306', 'ibeacon', '1Beac0n', 'ibeacon_traces');
-//$db = new PDO('mysql:host=127.0.0.1;port=3306;dbname=ibeacon_traces', 'ibeacon', '1Beac0n');
-//$db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-//$db->setAttribute(PDO::ATTR_EMULATE_PREPARES, false);
 
-$q_mac_r = $db->query('SELECT uuid, major, minor
-                      FROM traces
-                      WHERE '.'
-                    datetime BETWEEN \'' . $from->format('Y-m-d H:i:s') . '\' AND \'' . $to->format('Y-m-d H:i:s') . '\'
-                      GROUP BY uuid, major, minor');
-// $q_mac_r->execute(array(':selfMac' => hexdec($selfMac))); # performace: slow
+$sql = 'SELECT uuid, major, minor
+        FROM traces
+        WHERE selfMac = ' . hexdec($selfMac) . '
+        AND datetime BETWEEN \'' . $from->format('Y-m-d H:i:s') . '\' AND \'' . $to->format('Y-m-d H:i:s') . '\'
+        GROUP BY uuid, major, minor';
+$q_mac_r = $db->query($sql);
+unset($sql);
 
 $arr_stat = array();
 
