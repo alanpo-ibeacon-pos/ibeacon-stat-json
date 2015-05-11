@@ -29,7 +29,7 @@ try {
 
     if ($db->query("SELECT 1 FROM sqlite_master WHERE type='table' AND name='traces'")->fetchArray(SQLITE3_NUM)[0]) {
         $s_q_mac_r = $db->prepare("SELECT hex(uuid) AS uuid, major, minor FROM traces WHERE datetime BETWEEN :dateStart AND :dateEnd GROUP BY uuid, major, minor");
-        if ($db->lastErrorMsg()) throw new Exception($db->lastErrorMsg());
+        if ($db->lastErrorCode()) throw new Exception($db->lastErrorMsg());
         $s_q_mac_r->bindValue(':dateStart', $from->format('Y-m-d H:i:s'), SQLITE3_TEXT);
         $s_q_mac_r->bindValue(':dateEnd', $to->format('Y-m-d H:i:s'), SQLITE3_TEXT);
         $q_mac_r = $s_q_mac_r->execute();
