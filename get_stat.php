@@ -27,8 +27,6 @@ try {
 
     $arr_stat = array();
 
-
-
     if ($db->query("SELECT 1 FROM sqlite_master WHERE type='table' AND name='traces'")->fetchArray(SQLITE3_NUM)[0]) {
         $s_q_mac_r = $db->prepare("SELECT hex(uuid) AS uuid, major, minor FROM traces WHERE datetime BETWEEN :dateStart AND :dateEnd GROUP BY uuid, major, minor");
         if ($db->lastErrorMsg()) throw new Exception($db->lastErrorMsg());
