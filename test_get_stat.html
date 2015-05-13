@@ -19,6 +19,20 @@
 </div>
 </body>
 <script type="application/javascript" language="javascript">
+    var now = new Date(Date.now());
+    var past30s = new Date(now);
+    past30s.setSeconds(past30s.getSeconds() - 30);
+
+    function DateToSqlFormat(date) {
+        return date.toISOString()
+                .replace('T',' ')
+                .replace('Z','')
+                .replace(/\.\d{3}/g, '');
+    }
+
+    $('input[name=to]').val(DateToSqlFormat(now));
+    $('input[name=from]').val(DateToSqlFormat(past30s));
+
     $('#dyn').click(function() {
         $.ajax({ // create an AJAX call...
             data: $('#test_get_stat').serialize(), // get the form data
