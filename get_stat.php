@@ -6,13 +6,6 @@ try {
     $strFrom = isset($_POST["from"]) ? $_POST["from"] : null;
     $strTo = isset($_POST["to"]) ? $_POST["to"] : null;
 
-    // if (is_null($selfMac)) {
-    //     http_response_code(500);
-    //     header('Content-Type: text/plain');
-    //     echo 'selfMac attr not provided';
-    //     die(1);
-    // }
-
     date_default_timezone_set('UTC');
 
     $to = !is_null($strTo) && strlen($strTo) > 0 ? DateTime::createFromFormat('Y-m-d H:i:s', $strTo) : new DateTime();
@@ -22,9 +15,10 @@ try {
 
     $sql = 'SELECT uuid, major, minor
             FROM traces
-            WHERE selfMac = ' . hexdec($selfMac) . '
-            AND datetime BETWEEN \'' . $from->format('Y-m-d H:i:s') . '\' AND \'' . $to->format('Y-m-d H:i:s') . '\'
-            GROUP BY uuid, major, minor';
+            WHERE datetime BETWEEN \'' . $from->format('Y-m-d H:i:s') . '\' AND \'' . $to->format('Y-m-d H:i:s') . '\'';
+    if (!empty($selfMac))
+        $sql .= ' AND selfMac = ' . hexdec($selfMac);
+    $sql .= ' GROUP BY uuid, major, minor';
     $q_mac_r = $db->query($sql);
     unset($sql);
 
@@ -35,7 +29,7 @@ try {
         $major = intval($row_mac_r['major']);
         $minor = intval($row_mac_r['minor']);
 
-        $q_ib = $db->query('SELECT AVG(txpower) AS txpower, AVG(rssi) AS rssi, MIN(datetime) AS firstSeen FROM (
+        $q_ib = $db->query('SELECT AVG(txpower) AS txpower, AVG(rssi) AS rssi FROM (
                                 SELECT _idx, txpower, rssi, datetime
                                 FROM (
                                     SELECT @rownum := @rownum + 1 AS _idx, txpower, rssi, datetime
