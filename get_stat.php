@@ -22,8 +22,10 @@ try {
     if (!file_exists($dir)) {
         mkdir($dir, 0644, true);
     }
-    $db = new SQLite3($dir . '/ibeacons.sqlite3');
+    $db = new SQLite3($dir . '/ibeacons.sqlite3', SQLITE3_OPEN_READONLY);
     unset($dir);
+    $db->enableExceptions(true);
+
 
     $arr_stat = array();
 
